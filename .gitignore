@@ -56,3 +56,7 @@ dkms.conf
 
 .pio/
 .DS_Store
+
+# Environnement et caches Python
+.venv/
+__pycache__/
