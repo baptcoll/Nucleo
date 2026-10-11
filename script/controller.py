@@ -28,6 +28,9 @@ class Model(Protocol):
     def add_message(self, message: str) -> None:
         ...
 
+    def reset_firmware_version(self) -> None:
+        ...
+
 
 class View(Protocol):
     """Interface attendue de la future vue."""
@@ -170,6 +173,8 @@ class Controller:
             )
             return False
 
+        self.model.reset_firmware_version()
+        self.view.render(self.model)
         self._stop.clear()
         self._reader = Thread(target=self._read_serial, daemon=True)
         self._reader.start()

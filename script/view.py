@@ -30,6 +30,7 @@ class View(tk.Tk):
         self._baudrate = tk.StringVar(self, value="115200")
         self._refresh_ms = tk.StringVar(self, value="100")
         self._connection = tk.StringVar(self, value="Déconnecté")
+        self._firmware = tk.StringVar(self, value="Firmware : inconnu")
         self._temperature = tk.StringVar(self, value="— °C")
         self._supply = tk.StringVar(self, value="— mV")
         self._measurement_state = tk.StringVar(self, value="État inconnu")
@@ -110,6 +111,10 @@ class View(tk.Tk):
             row=2, column=1, sticky="e"
         )
 
+        ttk.Label(measurements, textvariable=self._firmware).grid(
+            row=3, column=0, columnspan=2, sticky="w", pady=(8, 0)
+        )
+
         self._messages = ScrolledText(
             content, wrap="word", state="disabled", height=12,
             font="TkFixedFont", takefocus=True
@@ -167,6 +172,8 @@ class View(tk.Tk):
 
     def render(self, model: "Model") -> None:
         """Affiche un instantané des données ; ne modifie jamais le modèle."""
+        version = model.firmware_version or "inconnu"
+        self._firmware.set(f"Firmware : {version}")
         measurement = model.latest_measurement
         if measurement is None:
             self._temperature.set("— °C")

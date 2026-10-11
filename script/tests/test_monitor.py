@@ -101,17 +101,21 @@ class MonitorTest(unittest.TestCase):
                     port = SerialStub.instances[0]
                     test.assertEqual(port.baudrate, 115200)
                     port.feed(
+                        b"Firmware STM32 : 1.0.0\r\n"
                         b"Temperature STM32 : 28 C | VDDA : 3300 mV\r\n"
                         b"Mesures en pause\r\n"
                     )
                     deadline = time.monotonic() + 3
-                    while self._controller.model.message_count < 2:
+                    while self._controller.model.message_count < 3:
                         if time.monotonic() >= deadline:
                             test.fail(
                                 "Les messages simulés ne sont pas reçus."
                             )
                         self.update()
                         time.sleep(0.01)
+                    test.assertEqual(
+                        self._firmware.get(), "Firmware : 1.0.0"
+                    )
                     test.assertEqual(self._temperature.get(), "28 °C")
                     test.assertEqual(self._supply.get(), "3300 mV")
                     test.assertEqual(
