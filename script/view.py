@@ -29,7 +29,6 @@ class View(tk.Tk):
         self._connected = False
         self._closing = False
         self._port = tk.StringVar(self, value=DEFAULT_ENDPOINT)
-        self._baudrate = tk.StringVar(self, value="115200")
         self._refresh_ms = tk.StringVar(self, value="100")
         self._connection = tk.StringVar(self, value="Déconnecté")
         self._firmware = tk.StringVar(self, value="Firmware : inconnu")
@@ -60,25 +59,16 @@ class View(tk.Tk):
         ttk.Label(connection, text="Adresse").grid(row=0, column=0, padx=(0, 8))
         self._port_entry = ttk.Entry(connection, textvariable=self._port)
         self._port_entry.grid(row=0, column=1, sticky="ew", padx=(0, 12))
-        ttk.Label(connection, text="Bauds (USB)").grid(row=0, column=2)
-        self._baud_entry = ttk.Entry(
-            connection, textvariable=self._baudrate, width=9
-        )
-        self._baud_entry.grid(row=0, column=3, padx=8)
         self._connect_button = ttk.Button(
             connection, text="Connecter", command=self._on_connection
         )
-        self._connect_button.grid(row=0, column=4)
-        self._detect_button = ttk.Button(
-            connection, text="Détecter USB", command=self._on_detect
-        )
-        self._detect_button.grid(row=0, column=5, padx=(8, 0))
+        self._connect_button.grid(row=0, column=2)
         ttk.Label(connection, textvariable=self._connection).grid(
             row=1, column=0, columnspan=2, sticky="w", pady=(8, 0)
         )
         ttk.Label(
-            connection, text="TCP : tcp://192.168.1.14:8081 · USB local : /dev/cu.usbmodem… ou COM3"
-        ).grid(row=2, column=0, columnspan=5, sticky="w", pady=(4, 0))
+            connection, text="TCP : tcp://192.168.1.14:8081"
+        ).grid(row=2, column=0, columnspan=3, sticky="w", pady=(4, 0))
 
         settings = ttk.Frame(content)
         settings.grid(row=1, column=0, sticky="ew", pady=(0, 12))
@@ -143,17 +133,12 @@ class View(tk.Tk):
         self._connection.set("Connecté" if connected else "Déconnecté")
         state = "disabled" if connected else "normal"
         self._port_entry.configure(state=state)
-        self._baud_entry.configure(state=state)
         self._connect_button.configure(
             text="Déconnecter" if connected else "Connecter",
             state="normal" if self._controller is not None else "disabled",
         )
         self._apply_button.configure(
             state="normal" if self._controller is not None else "disabled"
-        )
-        self._detect_button.configure(
-            state=("normal" if self._controller is not None and not connected
-                   else "disabled")
         )
         if connected:
             self._error.set("")
@@ -162,10 +147,6 @@ class View(tk.Tk):
         """Préremplit le champ sans déclencher la connexion."""
         if not self._connected:
             self._port.set(port)
-
-    def _on_detect(self) -> None:
-        if self._controller is not None:
-            self._controller.detect_port()
 
     def show_error(self, message: str) -> None:
         """Affiche une erreur sans boîte modale ni blocage du contrôleur."""
@@ -216,19 +197,12 @@ class View(tk.Tk):
         if self._connected:
             self._controller.disconnect()
             return
-        try:
-            baudrate = int(self._baudrate.get())
-            if baudrate <= 0:
-                raise ValueError
-        except ValueError:
-            self.show_error("Le débit doit être un entier positif.")
-            return
         port = self._port.get().strip()
         if not port:
-            self.show_error("Renseigner l’adresse TCP ou le port USB de la Nucleo.")
+            self.show_error("Renseigner l’adresse TCP de la Raspberry.")
             return
         self._error.set("")
-        self._controller.connect(port, baudrate)
+        self._controller.connect(port)
 
     def _on_refresh(self) -> None:
         if self._controller is None:

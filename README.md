@@ -110,15 +110,14 @@ Sur le Mac :
 2. Conserver l'adresse préremplie **tcp://192.168.1.14:8081**.
 3. Cliquer sur **Connecter**.
 
-Le réglage « Bauds (USB) » concerne uniquement les ports USB locaux ; le débit
-côté Raspberry est fixé au lancement du relais. Après une coupure réseau ou
+Le débit côté Raspberry est fixé au lancement du relais. Après une coupure réseau ou
 un arrêt du serveur, reconnecter manuellement avec le bouton **Connecter**.
 L'établissement de la connexion peut prendre jusqu'à deux secondes.
 
 L'accès USB direct reste disponible : brancher la carte au Mac, fermer le
-Monitor de PlatformIO puis cliquer sur **Détecter USB** ou saisir le port
-manuellement (`/dev/cu.usbmodem…`, `/dev/ttyACM0` ou `COM3`).
-La détection USB est explicite et ne s'effectue plus au démarrage.
+Monitor de PlatformIO puis saisir le port manuellement
+(`/dev/cu.usbmodem…`, `/dev/ttyACM0` ou `COM3`). Le débit USB local est fixé
+à **115200 bauds**.
 
 Le rafraîchissement de l'affichage est réglé sur **100 ms** par défaut.
 Modifier la valeur puis cliquer sur **Appliquer** pour changer ce délai.
