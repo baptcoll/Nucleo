@@ -5,45 +5,109 @@
 #define BUTTON_PIN GPIO_PIN_13
 #define BUTTON_PRESSED_STATE GPIO_PIN_RESET
 #define BUTTON_DEBOUNCE_MS 30U
+#define BUTTON_TIMER_HZ 1000U
+#define BUTTON_IRQ_PRIORITY 2U
 
-static GPIO_PinState last_state = GPIO_PIN_SET;
+static TIM_HandleTypeDef debounce_timer = {0};
 static GPIO_PinState stable_state = GPIO_PIN_SET;
-static uint32_t last_change_ms = 0U;
+static ButtonPressedCallback pressed_callback = NULL;
 
-void Button_Init(void)
+bool Button_Init(ButtonPressedCallback callback)
 {
     __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_TIM14_CLK_ENABLE();
+
+    uint32_t timer_clock_hz = HAL_RCC_GetPCLK1Freq();
+    if ((RCC->CFGR & RCC_CFGR_PPRE) != RCC_HCLK_DIV1)
+    {
+        timer_clock_hz *= 2U;
+    }
+    debounce_timer.Instance = TIM14;
+    debounce_timer.Init.Prescaler = timer_clock_hz / BUTTON_TIMER_HZ - 1U;
+    debounce_timer.Init.CounterMode = TIM_COUNTERMODE_UP;
+    debounce_timer.Init.Period = BUTTON_DEBOUNCE_MS - 1U;
+    debounce_timer.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+    debounce_timer.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+    if (HAL_TIM_Base_Init(&debounce_timer) != HAL_OK)
+    {
+        return false;
+    }
+    /* Le timer s'arrete automatiquement a la fin des 30 ms. */
+    SET_BIT(TIM14->CR1, TIM_CR1_OPM);
+    __HAL_TIM_CLEAR_FLAG(&debounce_timer, TIM_FLAG_UPDATE);
+    __HAL_TIM_ENABLE_IT(&debounce_timer, TIM_IT_UPDATE);
+
     GPIO_InitTypeDef config = {
         .Pin = BUTTON_PIN,
-        .Mode = GPIO_MODE_INPUT,
+        .Mode = GPIO_MODE_IT_RISING_FALLING,
         .Pull = GPIO_NOPULL,
         .Speed = GPIO_SPEED_FREQ_LOW
     };
     HAL_GPIO_Init(BUTTON_PORT, &config);
 
     /* Un bouton maintenu au demarrage doit etre relache avant un nouvel appui. */
-    last_state = HAL_GPIO_ReadPin(BUTTON_PORT, BUTTON_PIN);
-    stable_state = last_state;
-    last_change_ms = HAL_GetTick();
+    __HAL_GPIO_EXTI_CLEAR_IT(BUTTON_PIN);
+    stable_state = HAL_GPIO_ReadPin(BUTTON_PORT, BUTTON_PIN);
+    pressed_callback = callback;
+
+    /* La meme priorite empeche les deux gestionnaires de se preempter. */
+    HAL_NVIC_SetPriority(TIM14_IRQn, BUTTON_IRQ_PRIORITY, 0U);
+    HAL_NVIC_SetPriority(EXTI4_15_IRQn, BUTTON_IRQ_PRIORITY, 0U);
+    HAL_NVIC_EnableIRQ(TIM14_IRQn);
+    HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
+    return true;
 }
 
-bool Button_PollPressed(void)
+void EXTI4_15_IRQHandler(void)
 {
-    uint32_t now = HAL_GetTick();
-    GPIO_PinState state = HAL_GPIO_ReadPin(BUTTON_PORT, BUTTON_PIN);
+    HAL_GPIO_EXTI_IRQHandler(BUTTON_PIN);
+}
 
-    if (state != last_state)
+static void Button_OnEdge(uint16_t pin)
+{
+    if (pin == BUTTON_PIN)
     {
-        last_state = state;
-        last_change_ms = now;
+        /* Chaque rebond redemarre le compteur et son prediviseur. */
+        __HAL_TIM_DISABLE(&debounce_timer);
+        TIM14->EGR = TIM_EGR_UG;
+        __HAL_TIM_CLEAR_FLAG(&debounce_timer, TIM_FLAG_UPDATE);
+        __HAL_TIM_ENABLE(&debounce_timer);
     }
+}
 
-    /* La soustraction reste valide lors du debordement du compteur HAL. */
-    if (state != stable_state && (uint32_t)(now - last_change_ms) >= BUTTON_DEBOUNCE_MS)
+void HAL_GPIO_EXTI_Rising_Callback(uint16_t pin)
+{
+    Button_OnEdge(pin);
+}
+
+void HAL_GPIO_EXTI_Falling_Callback(uint16_t pin)
+{
+    Button_OnEdge(pin);
+}
+
+void TIM14_IRQHandler(void)
+{
+    HAL_TIM_IRQHandler(&debounce_timer);
+}
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *timer)
+{
+    if (timer->Instance == TIM14)
     {
-        stable_state = state;
-        return stable_state == BUTTON_PRESSED_STATE;
+        GPIO_PinState state = HAL_GPIO_ReadPin(BUTTON_PORT, BUTTON_PIN);
+        /* Un front en attente doit d'abord relancer les 30 ms. */
+        if (__HAL_GPIO_EXTI_GET_RISING_IT(BUTTON_PIN) != 0U ||
+            __HAL_GPIO_EXTI_GET_FALLING_IT(BUTTON_PIN) != 0U)
+        {
+            return;
+        }
+        if (state != stable_state)
+        {
+            stable_state = state;
+            if (state == BUTTON_PRESSED_STATE && pressed_callback != NULL)
+            {
+                pressed_callback();
+            }
+        }
     }
-
-    return false;
 }

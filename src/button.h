@@ -3,8 +3,10 @@
 
 #include <stdbool.h>
 
-void Button_Init(void);
-/* Appeler regulierement : un seul evenement par appui, apres anti-rebond. */
-bool Button_PollPressed(void);
+typedef void (*ButtonPressedCallback)(void);
+
+/* TIM14 est reserve a l'anti-rebond.
+ * Le callback s'execute en interruption : aucun traitement bloquant. */
+bool Button_Init(ButtonPressedCallback callback);
 
 #endif
