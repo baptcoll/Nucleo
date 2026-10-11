@@ -18,6 +18,8 @@ SERIAL_TIMEOUT_SECONDS = 0.1
 QUEUE_CAPACITY = 1000
 MAX_EVENTS_PER_REFRESH = 200
 MAX_LINE_BYTES = 65536
+STLINK_VENDOR_ID = 0x0483
+STLINK_PRODUCT_IDS = {0x374B, 0x374E, 0x374F, 0x3752, 0x3753, 0x3754}
 
 
 class Model(Protocol):
@@ -43,6 +45,9 @@ class View(Protocol):
         ...
 
     def show_error(self, message: str) -> None:
+        ...
+
+    def set_port(self, port: str) -> None:
         ...
 
 
@@ -85,6 +90,49 @@ class Controller:
             if self._after_id is not None:
                 self.view.after_cancel(self._after_id)
             self._schedule_refresh()
+
+    def detect_port(self) -> Optional[str]:
+        """Identifie le ST-LINK sans ouvrir de port ni connecter la carte."""
+        if self._closed or self._serial is not None:
+            return None
+        try:
+            from serial.tools import list_ports
+        except ImportError:
+            self.view.show_error("Installer pyserial pour détecter la Nucleo.")
+            return None
+        try:
+            ports = list_ports.comports()
+        except OSError as error:
+            self.view.show_error(f"Détection des ports impossible : {error}")
+            return None
+
+        candidates = set()
+        for port in ports:
+            description = " ".join(
+                value or "" for value in (port.description, port.product)
+            ).upper().replace("-", "").replace(" ", "")
+            identified = (
+                port.vid == STLINK_VENDOR_ID
+                and port.pid in STLINK_PRODUCT_IDS
+            )
+            if identified or "STLINK" in description:
+                candidates.add(port.device)
+
+        if len(candidates) == 1:
+            device = candidates.pop()
+            self.view.set_port(device)
+            self.view.show_error("")
+            return device
+        if not candidates:
+            self.view.show_error(
+                "Nucleo non détectée : brancher la carte puis cliquer sur "
+                "Détecter, ou saisir le port manuellement."
+            )
+        else:
+            self.view.show_error(
+                "Plusieurs ports ST-LINK détectés : saisir le port souhaité."
+            )
+        return None
 
     def connect(self, port: str, baudrate: int = DEFAULT_BAUDRATE) -> bool:
         """Ouvre un port explicite, par exemple /dev/cu.usbmodem… ou COM3."""

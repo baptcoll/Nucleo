@@ -78,8 +78,17 @@ deactivate
 
 1. Brancher la Nucleo via le connecteur USB du ST-LINK.
 2. Fermer le Monitor de PlatformIO pour libérer le port série.
-3. Renseigner le port dans la fenêtre et conserver **115200 bauds**.
+3. Le port ST-LINK est détecté au démarrage et prérempli. Conserver
+   **115200 bauds**.
 4. Cliquer sur **Connecter**.
+
+Si la carte est branchée après le lancement, cliquer sur **Détecter**.
+La détection ne se connecte pas à la carte et ne lance aucune recherche
+périodique. Elle utilise les identifiants USB ST-LINK ou sa description,
+via [pyserial](https://pyserial.readthedocs.io/en/latest/tools.html).
+Une seule Nucleo est attendue. Si aucun port ST-LINK n'est reconnu (ou si
+plusieurs correspondent), un message apparaît et la saisie manuelle reste
+possible. Le bouton Détecter est désactivé tant que la connexion est ouverte.
 
 Sur macOS, lister les ports disponibles avec :
 
