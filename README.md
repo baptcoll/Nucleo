@@ -6,14 +6,16 @@ la tension VDDA et l'état de pause des mesures.
 
 ## Prérequis du moniteur Python
 
-### Exécutable autonome macOS
+### Application autonome macOS
 
-Le fichier `script/nucleo-monitor` embarque Python, Tkinter et pyserial.
-Il fonctionne sans installation de Python ni activation de `.venv` :
+L’application `build/macos/Moniteur Nucleo.app` embarque Python, Tkinter et
+pyserial. Double-cliquer dessus dans le Finder pour ouvrir le moniteur
+**sans fenêtre Terminal**. Elle peut être copiée dans le dossier Applications.
+Aucune installation de Python ni activation de `.venv` n’est nécessaire.
 
-```bash
-./script/nucleo-monitor
-```
+Pour la générer, suivre la section « Reconstruire l’application macOS ».
+L’ancien fichier `script/nucleo-monitor` reste un exécutable de console :
+utiliser la version `.app` pour le lancement graphique.
 
 Ce binaire est construit pour **macOS sur Apple Silicon (arm64)** et testé
 sur le Mac de développement. Il ne convient pas à Windows, Linux ou aux Mac
@@ -150,19 +152,20 @@ Les tests utilisent un bouchon série en mémoire et des sockets TCP locales :
 aucun port physique n’est ouvert. Ils ouvrent temporairement des fenêtres Tkinter et nécessitent donc
 une session graphique. Chaque test graphique s'exécute dans un processus séparé.
 
-## Reconstruire le binaire macOS
+## Reconstruire l’application macOS
 
-Après modification du code Python, reconstruire l'exécutable depuis la racine
-du dépôt (le venv sert uniquement à la fabrication) :
+Depuis la racine du dépôt (le venv sert uniquement à la fabrication) :
 
 ```bash
 .venv/bin/python -m pip install -r script/requirements.txt pyinstaller==6.22.3
-PYINSTALLER_CONFIG_DIR=/tmp/nucleo-pyinstaller-cache \
-  .venv/bin/python -m PyInstaller --noconfirm --onefile \
-  --name nucleo-monitor --distpath script \
-  --workpath /tmp/nucleo-monitor-build --specpath /tmp \
-  --hidden-import serial script/monitor.py
+./script/build_macos.sh
 ```
 
-Le résultat remplace `script/nucleo-monitor`. PyInstaller doit être exécuté
-sur le système cible ; voir sa [documentation](https://pyinstaller.org/en/stable/usage.html).
+Le résultat est `build/macos/Moniteur Nucleo.app`. Le script utilise le mode
+`--windowed` pour créer une application sans console et `--onedir` pour
+embarquer les dépendances dans le paquet `.app`. Copier le paquet `.app`
+entier pour le déplacer ou le partager. Les fichiers générés dans `build/`
+sont ignorés par Git ; reconstruire après toute modification du moniteur.
+
+PyInstaller doit être exécuté sur le système cible ; voir sa
+[documentation](https://pyinstaller.org/en/stable/usage.html).
