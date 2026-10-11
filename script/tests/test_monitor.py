@@ -96,6 +96,8 @@ class MonitorTest(unittest.TestCase):
                 try:
                     test.assertEqual(SerialStub.instances, [])
                     test.assertEqual(self._temperature.get(), "— °C")
+                    test.assertEqual(self._port.get(), "tcp://192.168.1.14:8081")
+                    self._on_detect()
                     test.assertEqual(self._port.get(), "NUCLEO_STUB")
                     self._on_connection()
                     port = SerialStub.instances[0]

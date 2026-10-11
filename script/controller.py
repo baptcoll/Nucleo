@@ -1,12 +1,13 @@
-"""Coordination MVC du moniteur série de la Nucleo.
+"""Coordination MVC du moniteur TCP/série de la Nucleo.
 
 Dépendance pour la connexion : pyserial.
 La vue fournit after()/after_cancel() (comme Tkinter), render(model),
 set_connected(bool) et show_error(message). Le modèle fournit
 add_message(message). Les méthodes publiques sont appelées depuis le thread
-principal de l'interface ; seul le lecteur série s'exécute en arrière-plan.
+principal de l'interface ; seul le lecteur de données s'exécute en arrière-plan.
 """
 
+from connecteur import open_connection
 from queue import Empty, Full, Queue
 from threading import Event, Thread
 from typing import Any, Optional, Protocol
@@ -138,7 +139,7 @@ class Controller:
         return None
 
     def connect(self, port: str, baudrate: int = DEFAULT_BAUDRATE) -> bool:
-        """Ouvre un port explicite, par exemple /dev/cu.usbmodem… ou COM3."""
+        """Ouvre une adresse tcp://hôte:port ou un port série local."""
         if self._closed:
             raise RuntimeError("Le contrôleur est fermé.")
         if self._serial is not None:
@@ -162,14 +163,14 @@ class Controller:
             return False
 
         try:
-            self._serial = serial.Serial(
-                port=port,
+            self._serial = open_connection(
+                endpoint=port,
                 baudrate=baudrate,
                 timeout=SERIAL_TIMEOUT_SECONDS,
             )
         except (serial.SerialException, OSError, ValueError) as error:
             self.view.show_error(
-                f"Impossible d'ouvrir le port série : {error}"
+                f"Impossible d’ouvrir la connexion : {error}"
             )
             return False
 
@@ -214,7 +215,7 @@ class Controller:
                         self._enqueue("error", "Ligne série trop longue.")
                         return
         except (serial.SerialException, OSError) as error:
-            self._enqueue("error", f"Connexion série interrompue : {error}")
+            self._enqueue("error", f"Connexion interrompue : {error}")
 
     def _schedule_refresh(self) -> None:
         self._after_id = self.view.after(self._refresh_ms, self._refresh)

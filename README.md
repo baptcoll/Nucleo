@@ -1,4 +1,4 @@
-# Nucleo — mesures et moniteur série
+# Nucleo — mesures via Raspberry et TCP
 
 Le projet STM32 utilise PlatformIO et la HAL STM32. Le moniteur Python du
 dossier `script` affiche les messages reçus de la Nucleo, la température,
@@ -74,30 +74,51 @@ python script/monitor.py
 deactivate
 ```
 
-## Connecter la Nucleo
+## Connecter la Nucleo via la Raspberry
 
-1. Brancher la Nucleo via le connecteur USB du ST-LINK.
-2. Fermer le Monitor de PlatformIO pour libérer le port série.
-3. Le port ST-LINK est détecté au démarrage et prérempli. Conserver
-   **115200 bauds**.
-4. Cliquer sur **Connecter**.
+La Nucleo est branchée au port USB de la Raspberry `192.168.1.14`.
+Le relais `script/serial_bridge.py` transmet les octets dans les deux sens,
+à **115200 bauds**, sur le port TCP **8081**. Un seul client est accepté ;
+les connexions supplémentaires sont fermées immédiatement.
 
-Si la carte est branchée après le lancement, cliquer sur **Détecter**.
-La détection ne se connecte pas à la carte et ne lance aucune recherche
-périodique. Elle utilise les identifiants USB ST-LINK ou sa description,
-via [pyserial](https://pyserial.readthedocs.io/en/latest/tools.html).
-Une seule Nucleo est attendue. Si aucun port ST-LINK n'est reconnu (ou si
-plusieurs correspondent), un message apparaît et la saisie manuelle reste
-possible. Le bouton Détecter est désactivé tant que la connexion est ouverte.
+Le relais est installé dans `/home/pi/Documents/serial_bridge.py` et lancé
+avec `nohup` ; il survit à la fermeture SSH mais ne redémarre pas automatiquement
+après un redémarrage de la Raspberry. Les messages sans client sont écartés.
+En cas de débranchement USB, il s'arrête avec une erreur dans le journal :
+rebrancher la carte puis relancer le serveur.
 
-Sur macOS, lister les ports disponibles avec :
+Pour installer le relais sur une autre Raspberry avec Python 3 et pyserial :
 
 ```bash
-ls /dev/cu.*
+scp script/serial_bridge.py pi@192.168.1.14:/home/pi/Documents/
+ssh pi@192.168.1.14
+cd /home/pi/Documents
+nohup python3 -u serial_bridge.py > serial_bridge.log 2>&1 < /dev/null &
 ```
 
-Le port de la carte ressemble à `/dev/cu.usbmodem11103`, mais son nom peut
-changer. Pour l'identifier, comparer la liste avant et après branchement.
+La détection exige un unique ST-LINK. Au besoin, préciser
+`--serial-port /dev/serial/by-id/…` et `--baudrate 115200`.
+Le serveur écoute sur toutes les interfaces ; ce protocole brut, sans
+chiffrement ni authentification, est destiné au réseau local de confiance.
+Le journal est `/home/pi/Documents/serial_bridge.log`.
+Pour vérifier le processus : `ss -ltnp 'sport = :8081'`.
+Pour l'arrêter, utiliser `kill <PID>` avec le PID affiché par cette commande.
+
+Sur le Mac :
+
+1. Lancer `./script/nucleo-monitor` ou le moniteur depuis les sources.
+2. Conserver l'adresse préremplie **tcp://192.168.1.14:8081**.
+3. Cliquer sur **Connecter**.
+
+Le réglage « Bauds (USB) » concerne uniquement les ports USB locaux ; le débit
+côté Raspberry est fixé au lancement du relais. Après une coupure réseau ou
+un arrêt du serveur, reconnecter manuellement avec le bouton **Connecter**.
+L'établissement de la connexion peut prendre jusqu'à deux secondes.
+
+L'accès USB direct reste disponible : brancher la carte au Mac, fermer le
+Monitor de PlatformIO puis cliquer sur **Détecter USB** ou saisir le port
+manuellement (`/dev/cu.usbmodem…`, `/dev/ttyACM0` ou `COM3`).
+La détection USB est explicite et ne s'effectue plus au démarrage.
 
 Le rafraîchissement de l'affichage est réglé sur **100 ms** par défaut.
 Modifier la valeur puis cliquer sur **Appliquer** pour changer ce délai.
@@ -126,8 +147,8 @@ Compiler et téléverser le nouveau firmware pour activer cette information.
 .venv/bin/python -B -m unittest discover -s script/tests -v
 ```
 
-Les tests utilisent un bouchon série en mémoire : aucun port physique n'est
-ouvert. Ils ouvrent temporairement des fenêtres Tkinter et nécessitent donc
+Les tests utilisent un bouchon série en mémoire et des sockets TCP locales :
+aucun port physique n’est ouvert. Ils ouvrent temporairement des fenêtres Tkinter et nécessitent donc
 une session graphique. Chaque test graphique s'exécute dans un processus séparé.
 
 ## Reconstruire le binaire macOS

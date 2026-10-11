@@ -5,6 +5,8 @@ appeler view.bind_controller(controller), view.render(model) et mainloop().
 Toutes les méthodes de la vue doivent être appelées dans le thread principal.
 """
 
+from connecteur import DEFAULT_ENDPOINT
+
 import tkinter as tk
 from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
@@ -26,7 +28,7 @@ class View(tk.Tk):
         self._controller: Optional["Controller"] = None
         self._connected = False
         self._closing = False
-        self._port = tk.StringVar(self)
+        self._port = tk.StringVar(self, value=DEFAULT_ENDPOINT)
         self._baudrate = tk.StringVar(self, value="115200")
         self._refresh_ms = tk.StringVar(self, value="100")
         self._connection = tk.StringVar(self, value="Déconnecté")
@@ -51,14 +53,14 @@ class View(tk.Tk):
         content.rowconfigure(3, weight=1)
 
         connection = ttk.LabelFrame(
-            content, text="Connexion série", padding=10
+            content, text="Connexion Raspberry / Nucleo", padding=10
         )
         connection.grid(row=0, column=0, sticky="ew", pady=(0, 12))
         connection.columnconfigure(1, weight=1)
-        ttk.Label(connection, text="Port").grid(row=0, column=0, padx=(0, 8))
+        ttk.Label(connection, text="Adresse").grid(row=0, column=0, padx=(0, 8))
         self._port_entry = ttk.Entry(connection, textvariable=self._port)
         self._port_entry.grid(row=0, column=1, sticky="ew", padx=(0, 12))
-        ttk.Label(connection, text="Bauds").grid(row=0, column=2)
+        ttk.Label(connection, text="Bauds (USB)").grid(row=0, column=2)
         self._baud_entry = ttk.Entry(
             connection, textvariable=self._baudrate, width=9
         )
@@ -68,14 +70,14 @@ class View(tk.Tk):
         )
         self._connect_button.grid(row=0, column=4)
         self._detect_button = ttk.Button(
-            connection, text="Détecter", command=self._on_detect
+            connection, text="Détecter USB", command=self._on_detect
         )
         self._detect_button.grid(row=0, column=5, padx=(8, 0))
         ttk.Label(connection, textvariable=self._connection).grid(
             row=1, column=0, columnspan=2, sticky="w", pady=(8, 0)
         )
         ttk.Label(
-            connection, text="Port : /dev/cu.usbmodem… ou COM3"
+            connection, text="TCP : tcp://192.168.1.14:8081 · USB local : /dev/cu.usbmodem… ou COM3"
         ).grid(row=2, column=0, columnspan=5, sticky="w", pady=(4, 0))
 
         settings = ttk.Frame(content)
@@ -134,7 +136,6 @@ class View(tk.Tk):
         self.set_connected(self._connected)
         self._apply_button.configure(state="normal")
         self._on_refresh()
-        self._controller.detect_port()
 
     def set_connected(self, connected: bool) -> None:
         """Actualise la connexion sans effacer la dernière mesure connue."""
@@ -224,7 +225,7 @@ class View(tk.Tk):
             return
         port = self._port.get().strip()
         if not port:
-            self.show_error("Renseigner le port série de la Nucleo.")
+            self.show_error("Renseigner l’adresse TCP ou le port USB de la Nucleo.")
             return
         self._error.set("")
         self._controller.connect(port, baudrate)

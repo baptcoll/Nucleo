@@ -2,7 +2,8 @@
 
 Lancer avec : python3 script/monitor.py
 Tkinter est nécessaire à l'affichage ; pyserial à la connexion série.
-Aucun port n'est ouvert avant une action sur le bouton Connecter.
+La connexion TCP à la Raspberry est proposée par défaut.
+Aucun port n’est ouvert avant une action sur le bouton Connecter.
 """
 
 import tkinter as tk
