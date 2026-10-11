@@ -103,6 +103,23 @@ Le rafraîchissement de l'affichage est réglé sur **100 ms** par défaut.
 Modifier la valeur puis cliquer sur **Appliquer** pour changer ce délai.
 Ce réglage ne modifie pas la fréquence des mesures envoyées par la Nucleo.
 
+## Version du firmware
+
+La fenêtre affiche la version annoncée par la Nucleo, indépendamment de la
+version du logiciel Python. Elle est définie par `FIRMWARE_VERSION` dans
+`src/measurement.c` (initialement `1.0.0`) et envoyée sous la forme :
+
+```text
+Firmware STM32 : 1.0.0
+```
+
+Cette ligne est envoyée au démarrage, avec chaque mesure et lors des changements
+de pause. Une connexion tardive reçoit donc la version à la prochaine mesure.
+Si la carte est déjà en pause, reprendre les mesures pour recevoir la version.
+Le moniteur affiche « Firmware : inconnu » avant réception, y compris après
+reconnexion. Les anciens firmwares restent compatibles, sans version affichée.
+Compiler et téléverser le nouveau firmware pour activer cette information.
+
 ## Tests sans Nucleo
 
 ```bash

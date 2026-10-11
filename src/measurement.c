@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#define FIRMWARE_VERSION "1.0.0"
+
 #define SAMPLE_COUNT 16U
 #define HAL_TIMEOUT_MS 100U
 #define ADC_SETTLE_MS 1U
@@ -139,9 +141,21 @@ static uint32_t ADC_ReadAverage(uint32_t channel)
     return (sum + SAMPLE_COUNT / 2U) / SAMPLE_COUNT;
 }
 
+/* Reemettre la version permet une connexion du moniteur apres le demarrage. */
+static void Firmware_ReportVersion(void)
+{
+    const char message[] = "Firmware STM32 : " FIRMWARE_VERSION "\r\n";
+    if (HAL_UART_Transmit(&serial, (uint8_t *)message,
+                          (uint16_t)(sizeof(message) - 1U), HAL_TIMEOUT_MS) != HAL_OK)
+    {
+        Error_Stop("Erreur : emission version firmware\r\n");
+    }
+}
+
 void Measurement_Report(void)
 {
     HAL_GPIO_TogglePin(LED_PORT, LED_PIN);
+    Firmware_ReportVersion();
 
     uint32_t reference = ADC_ReadAverage(ADC_CHANNEL_VREFINT);
     uint32_t raw_temperature = ADC_ReadAverage(ADC_CHANNEL_TEMPSENSOR);
@@ -183,10 +197,12 @@ void Measurement_Init(void)
     }
     Serial_Init();
     ADC_Init();
+    Firmware_ReportVersion();
 }
 
 void Measurement_ReportPause(bool paused)
 {
+    Firmware_ReportVersion();
     const char *message = paused
         ? "Mesures en pause\r\n"
         : "Reprise des mesures\r\n";

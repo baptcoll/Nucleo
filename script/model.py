@@ -17,6 +17,7 @@ MEASUREMENT_PATTERN = re.compile(
     r"Temperature STM32 : (?P<temperature>-?\d+) C"
     r" \| VDDA : (?P<supply>\d+) mV"
 )
+FIRMWARE_PATTERN = re.compile(r"Firmware STM32 : ([0-9]+\.[0-9]+\.[0-9]+)")
 PAUSE_MESSAGE = "Mesures en pause"
 RESUME_MESSAGE = "Reprise des mesures"
 
@@ -54,6 +55,16 @@ class Model:
         self._measurements: Deque[Measurement] = deque(maxlen=history_limit)
         self._paused: Optional[bool] = None
         self._message_count = 0
+        self._firmware_version: Optional[str] = None
+
+    @property
+    def firmware_version(self) -> Optional[str]:
+        """Version annoncée par la carte, inconnue avant réception."""
+        return self._firmware_version
+
+    def reset_firmware_version(self) -> None:
+        """Oublie la version précédente au début d'une nouvelle connexion."""
+        self._firmware_version = None
 
     @property
     def messages(self) -> Tuple[Message, ...]:
@@ -95,6 +106,11 @@ class Model:
         self._messages.append(Message(timestamp=timestamp, text=text))
         self._message_count += 1
 
+        firmware = FIRMWARE_PATTERN.fullmatch(text)
+        if firmware is not None:
+            self._firmware_version = firmware.group(1)
+            return
+
         match = MEASUREMENT_PATTERN.fullmatch(text)
         if match is not None:
             try:
@@ -118,6 +134,7 @@ class Model:
 
     def clear(self) -> None:
         """Vide les historiques, le compteur et l'état des mesures."""
+        self.reset_firmware_version()
         self._messages.clear()
         self._measurements.clear()
         self._paused = None
