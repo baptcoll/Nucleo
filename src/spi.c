@@ -1,3 +1,8 @@
+/**
+ * @file spi.c
+ * @brief Configuration SPI1 maître sur PB3/PB4/PB5.
+ */
+
 #include "spi.h"
 #include "stm32g0xx_hal.h"
 

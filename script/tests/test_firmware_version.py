@@ -14,6 +14,7 @@ from model import Model
 
 class FirmwareVersionTest(unittest.TestCase):
     def test_version_preserves_measurement_state(self):
+        """Vérifie le décodage de version sans modifier l’état des mesures."""
         model = Model()
         model.add_message('Mesures en pause')
         model.add_message('Firmware STM32 : 1.2.3\r\n')
@@ -29,12 +30,14 @@ class FirmwareVersionTest(unittest.TestCase):
         self.assertIsNone(model.firmware_version)
 
     def test_old_firmware_remains_supported(self):
+        """Vérifie les mesures d’un firmware qui n’annonce pas sa version."""
         model = Model()
         model.add_message('Temperature STM32 : 28 C | VDDA : 3300 mV')
         self.assertIsNone(model.firmware_version)
         self.assertEqual(model.latest_measurement.temperature_c, 28)
 
     def test_reconnect_discards_previous_version(self):
+        """Vérifie que la reconnexion efface la version précédemment reçue."""
         model = Model()
         model.add_message('Firmware STM32 : 1.0.0')
         controller = Controller(model, Mock())

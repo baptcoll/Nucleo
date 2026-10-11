@@ -21,6 +21,7 @@ class View(tk.Tk):
     """Affiche les données et transmet les actions au contrôleur."""
 
     def __init__(self) -> None:
+        """Crée la fenêtre, les variables Tkinter et les widgets du moniteur."""
         super().__init__()
         self.title("Moniteur Nucleo")
         self.geometry("900x620")
@@ -44,6 +45,7 @@ class View(tk.Tk):
         self.set_connected(False)
 
     def _build_widgets(self) -> None:
+        """Dispose les contrôles de connexion, les mesures et le journal."""
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
         content = ttk.Frame(self, padding=16)
@@ -192,6 +194,7 @@ class View(tk.Tk):
             self._messages.yview_moveto(position)
 
     def _on_connection(self) -> None:
+        """Connecte l’adresse saisie ou ferme la connexion active."""
         if self._controller is None:
             return
         if self._connected:
@@ -205,6 +208,7 @@ class View(tk.Tk):
         self._controller.connect(port)
 
     def _on_refresh(self) -> None:
+        """Applique le délai saisi en millisecondes ou affiche une erreur."""
         if self._controller is None:
             return
         try:
@@ -216,6 +220,7 @@ class View(tk.Tk):
         self._error.set("")
 
     def _on_close(self) -> None:
+        """Arrête le contrôleur puis détruit la fenêtre une seule fois."""
         if self._closing:
             return
         self._closing = True

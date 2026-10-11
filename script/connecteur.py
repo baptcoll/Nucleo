@@ -11,6 +11,11 @@ class TcpConnection:
     """Adapte le flux TCP à l'interface read/close du lecteur existant."""
 
     def __init__(self, endpoint, timeout):
+        """Valide l’adresse TCP, ouvre la socket et fixe le délai de lecture.
+
+        Les délais sont en secondes ; la connexion est limitée à deux secondes.
+        Une adresse invalide lève ValueError ; un échec réseau lève OSError.
+        """
         address = urlsplit(endpoint)
         if (address.scheme != "tcp" or not address.hostname
                 or address.port is None or address.path
@@ -32,6 +37,7 @@ class TcpConnection:
         return data
 
     def close(self):
+        """Ferme la socket et libère la connexion TCP."""
         self.socket.close()
 
 

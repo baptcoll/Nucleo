@@ -1,3 +1,8 @@
+/**
+ * @file main.c
+ * @brief Boucle des mesures périodiques et gestion de la pause utilisateur.
+ */
+
 #include "stm32g0xx_hal.h"
 #include "button.h"
 #include "measurement.h"
@@ -7,6 +12,11 @@
 static volatile bool measurements_paused = false;
 static volatile bool pause_changed = false;
 
+/**
+ * @brief Bascule la pause et notifie la boucle principale.
+ * @note Rappel exécuté en interruption après validation de l’anti-rebond.
+ * Les entrées/sorties restent à la charge de la boucle principale.
+ */
 static void OnButtonPressed(void)
 {
     /* Appel en interruption, uniquement apres validation de l'anti-rebond. */
@@ -14,11 +24,20 @@ static void OnButtonPressed(void)
     pause_changed = true;
 }
 
+/**
+ * @brief Incrémente la base de temps HAL à chaque interruption SysTick.
+ */
 void SysTick_Handler(void)
 {
     HAL_IncTick();
 }
 
+/**
+ * @brief Initialise la carte et exécute les mesures avec pause utilisateur.
+ * @details Effectue une mesure toutes les 1000 ms et dès la reprise.
+ * Un échec du bouton annonce la pause et laisse la carte en attente.
+ * @return Ne retourne jamais : la boucle principale est permanente.
+ */
 int main(void)
 {
     /* Conserver l'horloge HSI16 par defaut. */

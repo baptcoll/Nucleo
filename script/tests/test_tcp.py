@@ -16,6 +16,7 @@ from model import Model
 
 class TcpTest(unittest.TestCase):
     def setUp(self):
+        """Ouvre un serveur TCP local sur un port libre pour chaque test."""
         self.listener = socket.socket()
         self.listener.bind(('127.0.0.1', 0))
         self.listener.listen(1)
@@ -24,6 +25,7 @@ class TcpTest(unittest.TestCase):
         self.endpoint = f'tcp://127.0.0.1:{self.listener.getsockname()[1]}'
 
     def test_timeout_and_eof(self):
+        """Distingue un délai de lecture expiré d’une fermeture distante."""
         connection = TcpConnection(self.endpoint, 0.01)
         self.addCleanup(connection.close)
         peer, _ = self.listener.accept()
@@ -36,6 +38,7 @@ class TcpTest(unittest.TestCase):
             connection.read(1)
 
     def test_controller_fragmentation_disconnect_and_reconnect(self):
+        """Vérifie les lignes fragmentées, la coupure et la reconnexion TCP."""
         model, view = Model(), Mock()
         controller = Controller(model, view)
         self.addCleanup(controller.close)
@@ -61,6 +64,7 @@ class TcpTest(unittest.TestCase):
             self.assertIn('interrompue', view.show_error.call_args.args[0])
 
     def test_invalid_endpoints(self):
+        """Vérifie le rejet des adresses TCP incomplètes ou mal formées."""
         for endpoint in ('tcp://localhost', 'tcp://localhost:99999',
                          'tcp://localhost:8081/path'):
             with self.subTest(endpoint=endpoint), self.assertRaises(ValueError):

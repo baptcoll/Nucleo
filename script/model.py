@@ -43,6 +43,11 @@ class Model:
     """Conserve les messages bruts et les dernières données de la Nucleo."""
 
     def __init__(self, history_limit: int = DEFAULT_HISTORY_LIMIT) -> None:
+        """Initialise les historiques bornés et les états encore inconnus.
+
+        history_limit fixe le nombre maximal de messages et de mesures conservés.
+        Une valeur autre qu’un entier strictement positif lève ValueError.
+        """
         if (
             isinstance(history_limit, bool)
             or not isinstance(history_limit, int)

@@ -27,9 +27,11 @@ class Model(Protocol):
     """Interface attendue du futur modèle."""
 
     def add_message(self, message: str) -> None:
+        """Ajoute une ligne reçue aux données du modèle."""
         ...
 
     def reset_firmware_version(self) -> None:
+        """Efface la version mémorisée avant une nouvelle connexion."""
         ...
 
 
@@ -37,21 +39,27 @@ class View(Protocol):
     """Interface attendue de la future vue."""
 
     def after(self, delay_ms: int, callback: Any) -> Any:
+        """Planifie un rappel après delay_ms millisecondes et renvoie son ID."""
         ...
 
     def after_cancel(self, callback_id: Any) -> None:
+        """Annule le rappel désigné par callback_id."""
         ...
 
     def render(self, model: Model) -> None:
+        """Actualise les widgets à partir de l’état du modèle."""
         ...
 
     def set_connected(self, connected: bool) -> None:
+        """Affiche l’état de connexion et active les contrôles adaptés."""
         ...
 
     def show_error(self, message: str) -> None:
+        """Affiche le message d’erreur, ou l’efface si la chaîne est vide."""
         ...
 
     def set_port(self, port: str) -> None:
+        """Préremplit le champ de connexion sans ouvrir le port."""
         ...
 
 
@@ -64,6 +72,11 @@ class Controller:
         view: View,
         refresh_ms: int = DEFAULT_REFRESH_MS,
     ) -> None:
+        """Relie modèle et vue, puis planifie le rafraîchissement.
+
+        refresh_ms est un entier strictement positif exprimé en millisecondes.
+        Une valeur invalide lève ValueError ; aucune connexion n’est ouverte.
+        """
         self._validate_refresh(refresh_ms)
         self.model = model
         self.view = view
@@ -79,6 +92,7 @@ class Controller:
 
     @staticmethod
     def _validate_refresh(refresh_ms: int) -> None:
+        """Lève ValueError si le délai n’est pas un entier strictement positif."""
         if isinstance(refresh_ms, bool) or not isinstance(refresh_ms, int):
             raise ValueError(
                 "Le délai de rafraîchissement doit être un entier."
@@ -184,6 +198,10 @@ class Controller:
 
     def _enqueue(self, kind: str, message: str) -> None:
         # Une file bornée évite une croissance mémoire illimitée.
+        """Place un message ou une erreur dans la file bornée.
+
+        Attend une place si la file est pleine, jusqu’à une demande d’arrêt.
+        """
         while not self._stop.is_set():
             try:
                 self._events.put(
@@ -218,9 +236,11 @@ class Controller:
             self._enqueue("error", f"Connexion interrompue : {error}")
 
     def _schedule_refresh(self) -> None:
+        """Programme le prochain rafraîchissement dans la boucle graphique."""
         self._after_id = self.view.after(self._refresh_ms, self._refresh)
 
     def _refresh(self) -> None:
+        """Traite les événements, actualise la vue et programme le rappel."""
         self._after_id = None
         if self._closed:
             return
@@ -230,6 +250,10 @@ class Controller:
         self._schedule_refresh()
 
     def _consume_events(self) -> bool:
+        """Traite un lot borné et indique si des messages ont été ajoutés.
+
+        Une erreur provoque la déconnexion et son affichage dans la vue.
+        """
         changed = False
         # Limiter le travail d'un rafraîchissement pour garder la vue réactive.
         for _ in range(MAX_EVENTS_PER_REFRESH):

@@ -1,3 +1,8 @@
+/**
+ * @file button.c
+ * @brief Détection des appuis sur PC13 avec anti-rebond par TIM14.
+ */
+
 #include "button.h"
 #include "stm32g0xx_hal.h"
 
@@ -58,11 +63,19 @@ bool Button_Init(ButtonPressedCallback callback)
     return true;
 }
 
+/**
+ * @brief Transmet l’interruption EXTI du bouton PC13 à la HAL.
+ */
 void EXTI4_15_IRQHandler(void)
 {
     HAL_GPIO_EXTI_IRQHandler(BUTTON_PIN);
 }
 
+/**
+ * @brief Relance les 30 ms d’anti-rebond après un front sur PC13.
+ * @param[in] pin Masque GPIO du front reçu ; les autres broches sont ignorées.
+ * @note Exécutée en interruption, sans attente bloquante.
+ */
 static void Button_OnEdge(uint16_t pin)
 {
     if (pin == BUTTON_PIN)
@@ -75,21 +88,39 @@ static void Button_OnEdge(uint16_t pin)
     }
 }
 
+/**
+ * @brief Traite le rappel HAL d’un front montant.
+ * @param[in] pin Masque GPIO transmis au gestionnaire d’anti-rebond.
+ */
 void HAL_GPIO_EXTI_Rising_Callback(uint16_t pin)
 {
     Button_OnEdge(pin);
 }
 
+/**
+ * @brief Traite le rappel HAL d’un front descendant.
+ * @param[in] pin Masque GPIO transmis au gestionnaire d’anti-rebond.
+ */
 void HAL_GPIO_EXTI_Falling_Callback(uint16_t pin)
 {
     Button_OnEdge(pin);
 }
 
+/**
+ * @brief Transmet l’interruption du timer d’anti-rebond à la HAL.
+ */
 void TIM14_IRQHandler(void)
 {
     HAL_TIM_IRQHandler(&debounce_timer);
 }
 
+/**
+ * @brief Valide l’état stable du bouton à l’expiration de TIM14.
+ * @param[in] timer Handle HAL du timer ayant déclenché le rappel.
+ * @note Ignore les autres timers et les fronts EXTI encore en attente.
+ * Appelle le rappel utilisateur uniquement lors d’un nouvel appui stable,
+ *  dans le contexte de l’interruption.
+ */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *timer)
 {
     if (timer->Instance == TIM14)

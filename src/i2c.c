@@ -1,3 +1,8 @@
+/**
+ * @file i2c.c
+ * @brief Configuration I2C1 sur PB8/PB9 avec horloge HSI16.
+ */
+
 #include "i2c.h"
 #include "stm32g0xx_hal.h"
 

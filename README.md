@@ -169,3 +169,37 @@ sont ignorés par Git ; reconstruire après toute modification du moniteur.
 
 PyInstaller doit être exécuté sur le système cible ; voir sa
 [documentation](https://pyinstaller.org/en/stable/usage.html).
+
+## Documentation Python
+
+Générer la documentation HTML des six modules de l’application à partir des
+docstrings (les tests ne sont pas inclus) :
+
+```bash
+.venv/bin/python -m pip install -r script/requirements-docs.txt
+./script/build_docs.sh
+```
+
+Ouvrir ensuite `build/docs/index.html` dans un navigateur. Après une
+modification des docstrings, relancer `./script/build_docs.sh` suffit.
+La documentation générée dans `build/` est ignorée par Git.
+
+## Documentation C du firmware
+
+Les commentaires Doxygen des fichiers `src/*.h` décrivent les interfaces
+publiques ; ceux des fichiers `src/*.c` documentent les fonctions internes
+et les gestionnaires d’interruption, avec leurs paramètres et contraintes.
+
+Installer Doxygen (sur macOS : `brew install doxygen`), puis générer les pages :
+
+```bash
+./script/build_docs_c.sh
+```
+
+Ouvrir `build/docs-c/index.html` dans un navigateur. La documentation inclut
+les fonctions statiques et la navigation dans les sources. La configuration
+est dans `docs/Doxyfile` ; la génération échoue en cas d’erreur Doxygen dans
+les commentaires. Un export XML est également disponible dans
+`build/docs-c/xml/` pour vérifier la couverture documentaire.
+Les fichiers générés sont ignorés par Git. Aucune compilation ni aucun
+transfert du firmware vers la carte n’est effectué par ce script.

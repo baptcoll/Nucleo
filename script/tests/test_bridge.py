@@ -14,21 +14,26 @@ from serial_bridge import serve
 
 class SerialSocket:
     def __init__(self, stream):
+        """Adapte une socket au contrat série minimal utilisé par le relais."""
         self.stream = stream
         self.in_waiting = 1
 
     def fileno(self):
+        """Renvoie le descripteur surveillé par le sélecteur du relais."""
         return self.stream.fileno()
 
     def read(self, size):
+        """Reçoit au maximum size octets depuis le matériel simulé."""
         return self.stream.recv(size)
 
     def write(self, data):
+        """Transmet tous les octets au matériel simulé."""
         self.stream.sendall(data)
 
 
 class BridgeTest(unittest.TestCase):
     def test_bidirectional_and_single_client(self):
+        """Vérifie les deux sens du relais, le refus et la reconnexion."""
         with socket.socket() as listener:
             listener.bind(('127.0.0.1', 0))
             listener.listen(1)
@@ -39,6 +44,7 @@ class BridgeTest(unittest.TestCase):
             failures = []
 
             def run():
+                """Exécute le relais et collecte les erreurs hors fermeture simulée."""
                 try:
                     serve(listener, SerialSocket(device))
                 except serial.SerialException:

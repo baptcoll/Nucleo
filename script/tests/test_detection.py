@@ -12,6 +12,7 @@ from controller import Controller
 
 
 def port(device="COM3", vid=0x0483, pid=0x374B, description="", product=None):
+    """Crée une description de port USB simulée pour les tests."""
     return types.SimpleNamespace(
         device=device, vid=vid, pid=pid,
         description=description, product=product,
@@ -20,6 +21,7 @@ def port(device="COM3", vid=0x0483, pid=0x374B, description="", product=None):
 
 class DetectionTest(unittest.TestCase):
     def setUp(self):
+        """Prépare le contrôleur et remplace l’inventaire des ports USB."""
         self.view = Mock()
         self.controller = Controller(Mock(), self.view)
         self.list_ports = Mock()
@@ -30,6 +32,7 @@ class DetectionTest(unittest.TestCase):
         self.addCleanup(self.controller.close)
 
     def test_stlink_among_unrelated_devices(self):
+        """Vérifie que les identifiants USB isolent le ST-LINK sans l’ouvrir."""
         self.list_ports.comports.return_value = [
             port("COM1", None, None), port(), port("COM4", 0x0483, 0x5740)
         ]
@@ -38,6 +41,7 @@ class DetectionTest(unittest.TestCase):
         self.assertIsNone(self.controller._serial)
 
     def test_description_without_identifiers(self):
+        """Vérifie la reconnaissance par description sans identifiants USB."""
         self.list_ports.comports.return_value = [
             port("/dev/cu.usbmodem1", None, None, "STM32 ST-Link")
         ]
@@ -46,28 +50,33 @@ class DetectionTest(unittest.TestCase):
         )
 
     def test_no_card_preserves_manual_port(self):
+        """Vérifie que l’absence de carte conserve la saisie manuelle."""
         self.list_ports.comports.return_value = [port("COM1", None, None)]
         self.assertIsNone(self.controller.detect_port())
         self.view.set_port.assert_not_called()
         self.assertIn("non détectée", self.view.show_error.call_args.args[0])
 
     def test_multiple_candidates(self):
+        """Vérifie qu’une détection ambiguë demande une saisie manuelle."""
         self.list_ports.comports.return_value = [port(), port("COM4")]
         self.assertIsNone(self.controller.detect_port())
         self.view.set_port.assert_not_called()
         self.assertIn("Plusieurs", self.view.show_error.call_args.args[0])
 
     def test_enumeration_failure(self):
+        """Vérifie l’affichage d’une erreur lors de l’inventaire USB."""
         self.list_ports.comports.side_effect = OSError("USB indisponible")
         self.assertIsNone(self.controller.detect_port())
         self.assertIn("impossible", self.view.show_error.call_args.args[0])
 
     def test_missing_pyserial(self):
+        """Vérifie le message signalant la dépendance pyserial absente."""
         with patch.dict(sys.modules, {"serial.tools": None}):
             self.assertIsNone(self.controller.detect_port())
         self.assertIn("pyserial", self.view.show_error.call_args.args[0])
 
     def test_connected_skips_detection(self):
+        """Vérifie que la détection est ignorée pendant une connexion."""
         self.controller._serial = Mock()
         self.assertIsNone(self.controller.detect_port())
         self.list_ports.comports.assert_not_called()

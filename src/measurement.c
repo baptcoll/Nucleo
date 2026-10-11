@@ -1,3 +1,8 @@
+/**
+ * @file measurement.c
+ * @brief Mesure de température et de VDDA, puis émission sur USART2.
+ */
+
 #include "stm32g0xx_hal.h"
 #include "measurement.h"
 #include <stdio.h>
@@ -17,6 +22,11 @@ static ADC_HandleTypeDef adc = {0};
 static UART_HandleTypeDef serial = {0};
 
 /* En cas d'erreur, la LED clignote rapidement au lieu du rythme normal. */
+/**
+ * @brief Signale une erreur fatale puis fait clignoter la LED indéfiniment.
+ * @param[in] message Chaîne terminée par zéro à émettre si USART2 est prête.
+ * @note Fonction bloquante sans retour ; utilise la base de temps HAL.
+ */
 static void Error_Stop(const char *message)
 {
     if (serial.gState == HAL_UART_STATE_READY)
@@ -35,6 +45,9 @@ static void Error_Stop(const char *message)
     }
 }
 
+/**
+ * @brief Configure PA5 en sortie et initialise la LED à l’état bas.
+ */
 static void LED_Init(void)
 {
     __HAL_RCC_GPIOA_CLK_ENABLE();
@@ -48,6 +61,11 @@ static void LED_Init(void)
     HAL_GPIO_Init(LED_PORT, &led);
 }
 
+/**
+ * @brief Configure USART2 sur PA2/PA3 à 115200 bauds, en 8N1.
+ * @pre L’horloge GPIOA doit être active, via LED_Init().
+ * @note Un échec HAL appelle Error_Stop().
+ */
 static void Serial_Init(void)
 {
     /* PA2 (TX) et PA3 (RX) sont relies au port serie USB du ST-LINK. */
@@ -78,6 +96,11 @@ static void Serial_Init(void)
     }
 }
 
+/**
+ * @brief Initialise et calibre ADC1 en résolution 12 bits.
+ * @note Attend la stabilisation après calibration. Un échec HAL appelle
+ * Error_Stop().
+ */
 static void ADC_Init(void)
 {
     __HAL_RCC_ADC_CLK_ENABLE();
@@ -107,6 +130,13 @@ static void ADC_Init(void)
     HAL_Delay(ADC_SETTLE_MS);
 }
 
+/**
+ * @brief Lit la moyenne arrondie de 16 conversions sur un canal ADC.
+ * @param[in] channel Identifiant HAL du canal ADC à sélectionner.
+ * @return Valeur ADC brute moyenne sur 12 bits, sans unité physique.
+ * @pre ADC_Init() doit avoir terminé avec succès.
+ * @note Acquisition bloquante ; toute erreur HAL appelle Error_Stop().
+ */
 static uint32_t ADC_ReadAverage(uint32_t channel)
 {
     ADC_ChannelConfTypeDef config = {
@@ -142,6 +172,12 @@ static uint32_t ADC_ReadAverage(uint32_t channel)
 }
 
 /* Reemettre la version permet une connexion du moniteur apres le demarrage. */
+/**
+ * @brief Émet la ligne de version du firmware sur USART2.
+ * @pre Serial_Init() doit avoir terminé avec succès.
+ * @note Réémise avec les mesures pour permettre les connexions tardives.
+ * Une erreur de transmission appelle Error_Stop().
+ */
 static void Firmware_ReportVersion(void)
 {
     const char message[] = "Firmware STM32 : " FIRMWARE_VERSION "\r\n";

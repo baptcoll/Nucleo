@@ -25,6 +25,7 @@ def isolated_window(test_method):
     """Une application Tk par processus pour le backend natif macOS."""
     @wraps(test_method)
     def run(self):
+        """Exécute le test dans un processus dédié ou dans le processus enfant."""
         if os.environ.get("NUCLEO_GUI_TEST_CHILD") == "1":
             return test_method(self)
         environment = dict(os.environ, NUCLEO_GUI_TEST_CHILD="1")
@@ -45,6 +46,7 @@ class SerialStub:
     instances = []
 
     def __init__(self, port, baudrate, timeout):
+        """Mémorise les paramètres du port simulé et crée sa file de réception."""
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout
@@ -53,21 +55,28 @@ class SerialStub:
         self.instances.append(self)
 
     def read(self, size):
+        """Lit un octet simulé ou renvoie une chaîne vide à expiration.
+
+        Le paramètre size est ignoré : le lecteur du moniteur demande un octet.
+        """
         try:
             return self.data.get(timeout=self.timeout)
         except Empty:
             return b""
 
     def feed(self, message):
+        """Injecte les octets d’un message dans la file de réception."""
         for byte in message:
             self.data.put(bytes([byte]))
 
     def close(self):
+        """Marque le port simulé comme fermé."""
         self.closed = True
 
 
 class MonitorTest(unittest.TestCase):
     def setUp(self):
+        """Prépare les doublures série et l’inventaire USB pour chaque test."""
         SerialStub.instances = []
         self.serial = types.SimpleNamespace(
             Serial=SerialStub, SerialException=OSError
@@ -82,17 +91,20 @@ class MonitorTest(unittest.TestCase):
 
     @isolated_window
     def test_reception_and_window_close(self):
+        """Vérifie l’affichage des messages et le nettoyage à la fermeture."""
         failures = []
         windows = []
         test = self
 
         class TestView(View):
             def __init__(self):
+                """Crée et mémorise la fenêtre dont le nettoyage sera vérifié."""
                 super().__init__()
                 windows.append(self)
 
             def mainloop(self):
                 # Exercer les vrais widgets avec un port fictif.
+                """Injecte des mesures, vérifie les widgets puis ferme la fenêtre."""
                 try:
                     test.assertEqual(SerialStub.instances, [])
                     test.assertEqual(self._temperature.get(), "— °C")
@@ -144,14 +156,17 @@ class MonitorTest(unittest.TestCase):
 
     @isolated_window
     def test_keyboard_interrupt_cleanup(self):
+        """Vérifie la libération du lecteur et des rappels après Ctrl+C."""
         windows = []
 
         class InterruptedView(View):
             def __init__(self):
+                """Crée et mémorise la fenêtre interrompue pendant le test."""
                 super().__init__()
                 windows.append(self)
 
             def mainloop(self):
+                """Ouvre le port simulé puis déclenche une interruption clavier."""
                 self._port.set("NUCLEO_STUB")
                 self._on_connection()
                 raise KeyboardInterrupt
