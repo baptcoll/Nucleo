@@ -72,6 +72,13 @@ class MonitorTest(unittest.TestCase):
         self.serial = types.SimpleNamespace(
             Serial=SerialStub, SerialException=OSError
         )
+        port = types.SimpleNamespace(
+            device="NUCLEO_STUB", vid=0x0483, pid=0x374B,
+            description="ST-LINK", product="STM32 STLink"
+        )
+        self.serial_tools = types.SimpleNamespace(
+            list_ports=types.SimpleNamespace(comports=lambda: [port])
+        )
 
     @isolated_window
     def test_reception_and_window_close(self):
@@ -89,7 +96,7 @@ class MonitorTest(unittest.TestCase):
                 try:
                     test.assertEqual(SerialStub.instances, [])
                     test.assertEqual(self._temperature.get(), "— °C")
-                    self._port.set("NUCLEO_STUB")
+                    test.assertEqual(self._port.get(), "NUCLEO_STUB")
                     self._on_connection()
                     port = SerialStub.instances[0]
                     test.assertEqual(port.baudrate, 115200)
@@ -118,7 +125,9 @@ class MonitorTest(unittest.TestCase):
                 finally:
                     self._on_close()
 
-        with patch.dict(sys.modules, {"serial": self.serial}):
+        with patch.dict(sys.modules, {
+            "serial": self.serial, "serial.tools": self.serial_tools
+        }):
             with patch.object(monitor, "View", TestView):
                 monitor.main()
         if failures:
@@ -141,7 +150,9 @@ class MonitorTest(unittest.TestCase):
                 self._on_connection()
                 raise KeyboardInterrupt
 
-        with patch.dict(sys.modules, {"serial": self.serial}):
+        with patch.dict(sys.modules, {
+            "serial": self.serial, "serial.tools": self.serial_tools
+        }):
             with patch.object(monitor, "View", InterruptedView):
                 monitor.main()
         self.assertTrue(SerialStub.instances[0].closed)

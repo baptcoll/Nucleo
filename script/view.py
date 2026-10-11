@@ -66,6 +66,10 @@ class View(tk.Tk):
             connection, text="Connecter", command=self._on_connection
         )
         self._connect_button.grid(row=0, column=4)
+        self._detect_button = ttk.Button(
+            connection, text="Détecter", command=self._on_detect
+        )
+        self._detect_button.grid(row=0, column=5, padx=(8, 0))
         ttk.Label(connection, textvariable=self._connection).grid(
             row=1, column=0, columnspan=2, sticky="w", pady=(8, 0)
         )
@@ -125,6 +129,7 @@ class View(tk.Tk):
         self.set_connected(self._connected)
         self._apply_button.configure(state="normal")
         self._on_refresh()
+        self._controller.detect_port()
 
     def set_connected(self, connected: bool) -> None:
         """Actualise la connexion sans effacer la dernière mesure connue."""
@@ -140,8 +145,21 @@ class View(tk.Tk):
         self._apply_button.configure(
             state="normal" if self._controller is not None else "disabled"
         )
+        self._detect_button.configure(
+            state=("normal" if self._controller is not None and not connected
+                   else "disabled")
+        )
         if connected:
             self._error.set("")
+
+    def set_port(self, port: str) -> None:
+        """Préremplit le champ sans déclencher la connexion."""
+        if not self._connected:
+            self._port.set(port)
+
+    def _on_detect(self) -> None:
+        if self._controller is not None:
+            self._controller.detect_port()
 
     def show_error(self, message: str) -> None:
         """Affiche une erreur sans boîte modale ni blocage du contrôleur."""
